@@ -1,0 +1,19 @@
+{
+  "name": "rdv-detector",
+  "version": "1.0.0",
+  "description": "In order to detect available time slot for residence card renewal",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "author": "Tue NGO",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "selenium-webdriver": "^4.28.1",
+    "tesseract.js": "^6.0.0"
+  }
+}
