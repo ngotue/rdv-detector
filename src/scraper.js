@@ -1,10 +1,30 @@
 import { Builder, By } from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome.js";
 import dotenv from 'dotenv';
-import fs from "fs";
+import fs from 'fs'
 import { readCaptcha } from "./read_captcha.js";
+import sharp from "sharp";
+import axios from "axios";
+
 
 export async function scraper() {
-    let driver = await new Builder().forBrowser("chrome").build();
+    const capturedCaptchaUrl = 'generated/captcha_image.png'
+    const enhancedImgUrl = 'generated/captcha_image_processed.png'
+    const captchaId = process.env.CAPTCHA_IMG_ID
+
+    const options = new chrome.Options();
+    options.addArguments("--disable-blink-features=AutomationControlled"); // Prevents detection
+    options.addArguments("--start-maximized"); // Opens browser maximized
+    let driver = await new Builder().forBrowser("chrome").setChromeOptions(options).build();
+
+    const userAgents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
+    ];
+    
+    const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
+    await driver.executeScript(`navigator.__defineGetter__('userAgent', () => '${randomUserAgent}')`);
 
     try {
         // Open a website
@@ -13,6 +33,8 @@ export async function scraper() {
 
         // Use the URL from the .env file
         await driver.get(process.env.SCRAPING_URL);
+
+        await driver.sleep(Math.random() * 3000 + 2000);
 
         const linkElements = await driver.findElements(By.css("a"));
 
@@ -26,13 +48,12 @@ export async function scraper() {
             }
         }
 
+        await driver.sleep(Math.random() * 3000 + 1000)
+
         // Click on a link
         await takeRdvLink.click();
 
         await driver.sleep(2000);
-
-        const captchaImage = await driver.findElement(By.css("#captchaFR_CaptchaImage"));
-        const captchaSrc = await captchaImage.getAttribute("src");
 
         const base64Image = await driver.executeScript(() => {
             const img = document.querySelector("#captchaFR_CaptchaImage");
@@ -55,23 +76,34 @@ export async function scraper() {
             return;
         }
 
+        fs.writeFileSync('generated/captcha_base64.txt', base64Image)
+
         // Convert Base64 to binary and save as a PNG file
         const buffer = Buffer.from(base64Image, "base64");
 
         // Log the size of the buffer
-        console.log("Buffer size:", buffer.length);
+        // console.log("Buffer size:", buffer.length);
 
         // Save the image to a file
-        fs.writeFileSync(process.env.GENERATED_PNG_PATH, buffer);
+        fs.writeFileSync(capturedCaptchaUrl, buffer);
 
         console.log("Captcha image saved as captcha_image.png");
 
-        const text = readCaptcha(process.env.GENERATED_PNG_PATH);
+        let text = ""
 
-        console.log("🔍 Extracted CAPTCHA Text:", text.trim());
+        axios.post('https://api.capmonster.cloud/createTask')
+
+        // await sharp(buffer)
+        //     .grayscale() // Convert to grayscale
+        //     .threshold(120) // Apply thresholding (adjust value as needed)
+        //     .toFile(enhancedImgUrl);
+
+        // const text = await readCaptcha(capturedCaptchaUrl);
+
+        console.log("🔍 Extracted CAPTCHA Text:", text);
         
     } finally {
         // Close the browser
-        // await driver.quit();
+        await driver.quit();
     }
 };
